@@ -1,0 +1,18 @@
+{
+  "name": "rannk/match_image",
+  "keywords": ["match image", "php"],
+  "homepage": "http://github.com/rannk/match_image",
+  "authors": [{
+    "name": "Rannk Deng",
+    "email": "rannk@163.com"
+  }],
+  "require": {
+    "php": ">=5.3.0",
+    "symfony/console": "@stable"
+  },
+  "autoload": {
+  },
+  "include-path": [
+    ""
+  ]
+}
