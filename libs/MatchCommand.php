@@ -11,11 +11,15 @@ use Symfony\Component\Console\Input\InputArgument;
 class MatchCommand extends Command
 {
 
+    private $elastic = 10;
+    private $diff_dir = "";
+
     protected function configure()
     {
         $this->addArgument('original image', InputArgument::REQUIRED, 'the original image file you want to match');
         $this->addArgument('match image', InputArgument::OPTIONAL, 'the image file you want to match');
         $this->addOption("ignore", "i",InputOption::VALUE_REQUIRED, "which image block you want to ignore to match, format is 'x1,y1,x2,y2:...");
+        $this->addOption("diff_dir", "d",InputOption::VALUE_REQUIRED, "the directory that save the difference image");
         $this->setName("match");
     }
 
@@ -58,7 +62,9 @@ class MatchCommand extends Command
             }
         }
 
-       $output->write($this->matchImage($file1,$file2,$ignore_arr));
+        $this->diff_dir = $input->getOption("diff_dir");
+
+        $output->write($this->matchImage($file1,$file2,$ignore_arr));
     }
 
     private function matchImage($file1, $file2, $ignore_blocks=array()) {
@@ -70,7 +76,7 @@ class MatchCommand extends Command
                 $r   = ($rgb >> 16) & 0xFF;
                 $g   = ($rgb >> 8) & 0xFF;
                 $b   = $rgb & 0xFF;
-                $orignal[$x][$y] = $r . $g . $b;
+                $orignal[$x][$y] = "$r,$g,$b";
             }
         }
 
@@ -86,8 +92,14 @@ class MatchCommand extends Command
                 $r   = ($rgb >> 16) & 0xFF;
                 $g   = ($rgb >> 8) & 0xFF;
                 $b   = $rgb & 0xFF;
-                $pos = $r . $g . $b;
-                if($pos != $orignal[$x][$y]){
+
+                $rgb_arr = explode(",", $orignal[$x][$y]);
+                $r1 = $rgb_arr[0];
+                $g1 = $rgb_arr[1];
+                $b1 = $rgb_arr[2];
+
+                if($this->overElasticMatch($r, $g, $b, $r1, $g1, $b1)){
+                    //echo "$x,$y|$r,$g,$b -- $r1,$g1,$b1 \n";
                     $diff_pos[$x][$y] = 1;
                     $diff++;
                 }
@@ -104,10 +116,21 @@ class MatchCommand extends Command
                     imageline($i, $pos_x, $pos_y, $pos_x, $pos_y, $red);
                 }
             }
-            imagepng($i, $file_arr["dirname"]."/".$file_arr["filename"]."_diff.png");
+
+            $diff_dir = (file_exists($this->diff_dir))?$this->diff_dir:$file_arr["dirname"];
+            imagepng($i, $diff_dir."/".$file_arr["filename"]."_diff.png");
         }
 
         return $diff;
+    }
+
+    private function overElasticMatch($r, $g, $b, $r1, $g1, $b1) {
+        $v = ($r-$r1)*($r-$r1)+($g-$g1)*($g-$g1)+($b-$b1)*($b-$b1);
+        $v = floor(sqrt($v));
+        if($v > $this->elastic) {
+            return true;
+        }
+        return;
     }
 
     private function createImg($file) {
